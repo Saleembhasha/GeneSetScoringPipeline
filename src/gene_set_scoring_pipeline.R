@@ -89,8 +89,9 @@ CalculateGeneSetScores <- function(seurat_obj = NULL, expr_matrix = NULL, gene_s
   
   # Run GSVA if requested
   if ("GSVA" %in% methods_to_use) {
-    gsva_res <- gsva(expr_matrix, gene_sets_filtered, method = "gsva", mx.diff = TRUE, verbose = FALSE)
-    results[["GSVA"]] <- as.data.frame(t(gsva_res))
+    gsva_params <- gsvaParam(expr_matrix, gene_sets_filtered, maxDiff=FALSE)
+    gsva_scores <- gsva(gsva_params)
+    results[["GSVA"]] <- as.data.frame(t(gsva_scores))
   }
   
   return(results)
