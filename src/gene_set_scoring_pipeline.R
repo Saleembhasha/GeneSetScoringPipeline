@@ -32,30 +32,35 @@ CalculateGeneSetScores <- function(seurat_obj = NULL, expr_matrix = NULL, gene_s
   }
   
   # Filter gene sets for genes present in data
-  gene_sets_filtered <- lapply(gene_sets, function(gs) intersect(gs, rownames(expr_matrix)))
+  if (!is.null(seurat_obj)){
+    avail <- rownames(GetAssayData(seurat_obj, assay = assay_name, layer = layer))
+  }else if (!is.null(expr_matrix)){
+    avail <- intersect(gs, rownames(expr_matrix))
+  }
+  
+  gene_sets_filtered <- lapply(gene_sets, function(gs) intersect(unique(gs), avail))
   
   results <- list()
   
   # Run AddModuleScore if requested and Seurat object provided
   if ("AddModuleScore" %in% methods_to_use) {
     if (!is.null(seurat_obj)) {
-      seurat_obj <- AddModuleScore(seurat_obj, features = gene_sets_filtered, name = "ModuleScore")
-      results[["AddModuleScore"]] <- seurat_obj@meta.data[, grep("ModuleScore", colnames(seurat_obj@meta.data)), drop = FALSE]
+      seurat_obj <- AddModuleScore(seurat_obj, features = gene_sets_filtered,ctrl = 3,name = NULL)
+      results[["AddModuleScore"]] <- seurat_obj@meta.data[, names(gene_sets_filtered), drop = FALSE]
     } else {
       warning("AddModuleScore requires a Seurat object; skipping.")
     }
   }
   
-  # Run AUCell if requested
-  if ("AUCell" %in% methods_to_use) {
-    cells_rankings <- AUCell_buildRankings(expr_matrix, plotStats=FALSE, nCores=1)
-    aucell_scores <- AUCell_calcAUC(gene_sets_filtered, cells_rankings, aucMaxRank = ceiling(0.05 * nrow(expr_matrix)))
-    results[["AUCell"]] <- as.data.frame(t(aucell_scores@assays@data))
-  }
-  
   # Run UCell if requested
   if ("UCell" %in% methods_to_use) {
-    results[["UCell"]] <- ScoreSignatures_UCell(expr_matrix, features = gene_sets_filtered)
+    seurat_obj <- AddModuleScore_UCell(seurat_obj, features = gene_sets_filtered, name=NULL)
+    results[["UCell"]] <- seurat_obj@meta.data[, names(gene_sets_filtered), drop = FALSE]
+  }
+  
+  # Run AUCell if requested
+  if ("AUCell" %in% methods_to_use) {
+    results[["AUCell"]] <- AUCell_run(expr_matrix, gene_sets_filtered)
   }
   
   # Run custom average score if requested
