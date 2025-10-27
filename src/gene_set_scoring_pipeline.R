@@ -24,9 +24,10 @@ CalculateGeneSetScores <- function(seurat_obj = NULL, expr_matrix = NULL, gene_s
   
   # Extract expression matrix
   if (!is.null(seurat_obj)) {
-    expr_matrix <- as.matrix(seurat_obj[["RNA"]]@data)
+    assay_name <- DefaultAssay(seurat_obj)
+    expr_matrix <- as.matrix(seurat_obj[[assay_name]]@data)
     if (is.null(expr_matrix) || ncol(expr_matrix) == 0) {
-      expr_matrix <- as.matrix(seurat_obj[["RNA"]]@counts)
+      expr_matrix <- as.matrix(seurat_obj[[assay_name]]@counts)
     }
   }
   
