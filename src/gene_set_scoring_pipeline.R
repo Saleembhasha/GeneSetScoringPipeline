@@ -60,7 +60,8 @@ CalculateGeneSetScores <- function(seurat_obj = NULL, expr_matrix = NULL, gene_s
   
   # Run AUCell if requested
   if ("AUCell" %in% methods_to_use) {
-    results[["AUCell"]] <- AUCell_run(expr_matrix, gene_sets_filtered)
+    AUScore<-AUCell_run(expr_matrix, gene_sets_filtered)
+    results[["AUCell"]] <- as.data.frame(t(getAUC(AUScore)))
   }
   
   # Run custom average score if requested
@@ -71,20 +72,16 @@ CalculateGeneSetScores <- function(seurat_obj = NULL, expr_matrix = NULL, gene_s
       }
       colMeans(expr_matrix[gs, , drop=FALSE])
     })
-    results[["Custom_Average"]] <- as.data.frame(t(custom_score))
+    results[["Custom_Average"]] <- as.data.frame(custom_score)
   }
   
   # Run singscore if requested
   if ("singscore" %in% methods_to_use) {
-    rank_mat <- rankGenes(expr_matrix)
-    singscore_list <- lapply(gene_sets_filtered, function(gs) {
-      if (length(gs) == 0) {
-        return(rep(NA, ncol(expr_matrix)))
-      }
-      simpleScore(rank_mat, upSet = gs)$TotalScore
-    })
-    results[["singscore"]] <- as.data.frame(t(do.call(cbind, singscore_list)))
-    rownames(results[["singscore"]]) <- names(gene_sets_filtered)
+    ranked <- rankGenes(expr_matrix)
+    singscore <- multiScore(ranked, upSetColc = gene_sets_filtered)
+    singscore <-  as.data.frame(t(singscore[["Scores"]]))
+    #colnames(singscore)<-names(gene_sets_filtered)
+    results[["singscore"]] <- singscore
   }
   
   # Run GSVA if requested
